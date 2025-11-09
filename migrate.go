@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,6 +17,22 @@ func setupDatabase() error {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		databaseURL = "postgres://postgres:postgres@postgres:5432/finance?sslmode=disable"
+	}
+
+	// Normalize postgresql:// to postgres:// and ensure sslmode is set
+	if databaseURL != "" {
+		// Replace postgresql:// with postgres:// for compatibility
+		if len(databaseURL) > 11 && databaseURL[:11] == "postgresql:" {
+			databaseURL = "postgres" + databaseURL[10:]
+		}
+		// Add sslmode=disable if not present
+		if !strings.Contains(databaseURL, "sslmode=") {
+			separator := "?"
+			if strings.Contains(databaseURL, "?") {
+				separator = "&"
+			}
+			databaseURL = databaseURL + separator + "sslmode=disable"
+		}
 	}
 
 	config, err := pgx.ParseConfig(databaseURL)
