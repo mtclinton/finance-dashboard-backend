@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"time"
@@ -10,6 +11,17 @@ import (
 )
 
 func main() {
+	// Check for migrate command
+	migrateCmd := flag.Bool("migrate", false, "Run database migration and seed data")
+	flag.Parse()
+
+	if *migrateCmd {
+		if err := setupDatabase(); err != nil {
+			log.Fatalf("Migration failed: %v", err)
+		}
+		log.Println("Migration completed successfully")
+		os.Exit(0)
+	}
 	// Initialize database
 	if err := initDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)

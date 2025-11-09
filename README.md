@@ -18,6 +18,22 @@ The app expects a PostgreSQL database and optionally Redis for caching. Set thes
 - `REDIS_URL` - Redis connection string (defaults to `redis:6379`)
 - `PORT` - Server port (defaults to `8080`)
 
+### Database Setup
+
+Run the migration to create tables and seed initial data:
+```bash
+go run . -migrate
+```
+
+Or if you've built the binary:
+```bash
+./main -migrate
+```
+
+The app will also auto-create the schema on startup if it doesn't exist, but running the migrate command separately is useful for Kubernetes init containers.
+
+### Start the Server
+
 Run it:
 ```bash
 go run .
