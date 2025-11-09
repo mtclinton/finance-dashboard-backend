@@ -1,9 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -21,13 +23,26 @@ func setupDatabase() error {
 		return fmt.Errorf("failed to parse database URL: %w", err)
 	}
 
-	db := stdlib.OpenDB(*config)
-	defer db.Close()
+	// Wait for database to be ready with retries
+	var db *sql.DB
+	maxRetries := 30
+	retryDelay := 2 * time.Second
 
-	// Test connection
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	for i := 0; i < maxRetries; i++ {
+		db = stdlib.OpenDB(*config)
+		if err := db.Ping(); err != nil {
+			db.Close()
+			if i < maxRetries-1 {
+				log.Printf("Database not ready, retrying in %v... (attempt %d/%d)", retryDelay, i+1, maxRetries)
+				time.Sleep(retryDelay)
+				continue
+			}
+			return fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
+		}
+		log.Println("Database connection established")
+		break
 	}
+	defer db.Close()
 
 	log.Println("Creating database schema...")
 
