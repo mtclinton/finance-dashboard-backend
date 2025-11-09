@@ -1,0 +1,356 @@
+openapi: 3.0.3
+info:
+  title: Finance Dashboard API
+  description: Backend API for finance dashboard managing transactions, categories, and analytics
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the service is healthy and database is accessible
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/transactions:
+    get:
+      summary: Get all transactions
+      description: Retrieve a list of transactions (cached for 60 seconds)
+      operationId: getTransactions
+      tags:
+        - Transactions
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create a new transaction
+      description: Add a new financial transaction
+      operationId: addTransaction
+      tags:
+        - Transactions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionInput'
+      responses:
+        '201':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/transactions/{id}:
+    delete:
+      summary: Delete a transaction
+      description: Remove a transaction by ID
+      operationId: deleteTransaction
+      tags:
+        - Transactions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Transaction ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transaction deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transaction deleted
+        '400':
+          description: Invalid transaction ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/categories:
+    get:
+      summary: Get all categories
+      description: Retrieve a list of all transaction categories
+      operationId: getCategories
+      tags:
+        - Categories
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/analytics:
+    get:
+      summary: Get analytics
+      description: Retrieve financial analytics including summary and category breakdown (cached for 5 minutes)
+      operationId: getAnalytics
+      tags:
+        - Analytics
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analytics'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Transaction ID
+          example: 1
+        date:
+          type: string
+          format: date
+          description: Transaction date
+          example: "2024-01-15"
+        description:
+          type: string
+          description: Transaction description
+          example: "Grocery shopping"
+        amount:
+          type: number
+          format: float
+          description: Transaction amount
+          example: 125.50
+        category_id:
+          type: integer
+          nullable: true
+          description: Category ID
+          example: 1
+        type:
+          type: string
+          enum: [income, expense]
+          description: Transaction type
+          example: expense
+        notes:
+          type: string
+          nullable: true
+          description: Additional notes
+          example: "Weekly groceries"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2024-01-15T10:30:00Z"
+        category_name:
+          type: string
+          nullable: true
+          description: Category name (populated on GET)
+          example: "Groceries"
+        category_color:
+          type: string
+          nullable: true
+          description: Category color (populated on GET)
+          example: "#e74c3c"
+
+    TransactionInput:
+      type: object
+      required:
+        - date
+        - description
+        - amount
+        - type
+      properties:
+        date:
+          type: string
+          format: date
+          description: Transaction date
+          example: "2024-01-15"
+        description:
+          type: string
+          description: Transaction description
+          example: "Grocery shopping"
+        amount:
+          type: number
+          format: float
+          description: Transaction amount
+          example: 125.50
+        category_id:
+          type: integer
+          nullable: true
+          description: Category ID
+          example: 1
+        type:
+          type: string
+          enum: [income, expense]
+          description: Transaction type
+          example: expense
+        notes:
+          type: string
+          nullable: true
+          description: Additional notes
+          example: "Weekly groceries"
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Category ID
+          example: 1
+        name:
+          type: string
+          description: Category name
+          example: "Groceries"
+        type:
+          type: string
+          enum: [income, expense]
+          description: Category type
+          example: expense
+        color:
+          type: string
+          description: Category color in hex format
+          example: "#e74c3c"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2024-01-15T10:30:00Z"
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        total_income:
+          type: number
+          format: float
+          description: Total income in the last 30 days
+          example: 5000.00
+        total_expenses:
+          type: number
+          format: float
+          description: Total expenses in the last 30 days
+          example: 2500.00
+        transaction_count:
+          type: integer
+          description: Number of transactions in the last 30 days
+          example: 45
+
+    CategoryAnalytics:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Category name
+          example: "Groceries"
+        color:
+          type: string
+          description: Category color
+          example: "#e74c3c"
+        total:
+          type: number
+          format: float
+          description: Total amount for this category
+          example: 800.00
+
+    Analytics:
+      type: object
+      properties:
+        summary:
+          $ref: '#/components/schemas/AnalyticsSummary'
+        byCategory:
+          type: array
+          description: Breakdown by category
+          items:
+            $ref: '#/components/schemas/CategoryAnalytics'
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        service:
+          type: string
+          example: transaction-service
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request"
+        status:
+          type: string
+          description: Status (only for health endpoint)
+          example: unhealthy
+
