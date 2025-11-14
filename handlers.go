@@ -61,6 +61,7 @@ func getTransactions(c *gin.Context) {
 
 	// ensure empty array ([]) instead of null when no rows
 	transactions := make([]Transaction, 0)
+  
 	for rows.Next() {
 		var t Transaction
 		err := rows.Scan(
@@ -222,6 +223,7 @@ func getAnalytics(c *gin.Context) {
 
 	// ensure empty array ([]) instead of null when no rows
 	byCategory := make([]CategoryAnalytics, 0)
+  
 	for rows.Next() {
 		var cat CategoryAnalytics
 		err := rows.Scan(&cat.Name, &cat.Color, &cat.Total)
