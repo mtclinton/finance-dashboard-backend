@@ -42,7 +42,7 @@ func setupDatabase() error {
 
 	// Wait for database to be ready with retries
 	var db *sql.DB
-	maxRetries := 30
+	maxRetries := 60
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {

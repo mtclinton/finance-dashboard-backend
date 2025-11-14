@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -41,11 +42,28 @@ func initDB() error {
 		return fmt.Errorf("failed to parse database URL: %w", err)
 	}
 
-	db = stdlib.OpenDB(*config)
+	// Wait for database to be ready with retries
+	maxRetries := 60
+	retryDelay := 2 * time.Second
 
-	// Test connection
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	for i := 0; i < maxRetries; i++ {
+		db = stdlib.OpenDB(*config)
+		if err := db.Ping(); err != nil {
+			db.Close()
+			if i < maxRetries-1 {
+				// Log the actual error every 10 attempts
+				if i%10 == 0 || i < 5 {
+					log.Printf("Database not ready, retrying in %v... (attempt %d/%d) Error: %v", retryDelay, i+1, maxRetries, err)
+				} else {
+					log.Printf("Database not ready, retrying in %v... (attempt %d/%d)", retryDelay, i+1, maxRetries)
+				}
+				time.Sleep(retryDelay)
+				continue
+			}
+			return fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
+		}
+		log.Println("Database connection established")
+		break
 	}
 
 	// Initialize schema
