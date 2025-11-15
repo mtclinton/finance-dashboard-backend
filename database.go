@@ -95,6 +95,24 @@ func initDB() error {
 			start_date DATE NOT NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
+
+		-- Remove any duplicate categories, keeping the lowest id
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.tables 
+				WHERE table_schema = 'public' AND table_name = 'categories'
+			) THEN
+				WITH d AS (
+					SELECT id, ROW_NUMBER() OVER (PARTITION BY name, type ORDER BY id) rn
+					FROM categories
+				)
+				DELETE FROM categories WHERE id IN (SELECT id FROM d WHERE rn > 1);
+			END IF;
+		END $$;
+
+		-- Ensure uniqueness on (name, type) so seeding is idempotent
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_type ON categories(name, type);
 	`
 
 	if _, err := db.Exec(schema); err != nil {
@@ -111,7 +129,7 @@ func initDB() error {
 			('Entertainment', 'expense', '#9b59b6'),
 			('Salary', 'income', '#27ae60'),
 			('Freelance', 'income', '#16a085')
-		ON CONFLICT DO NOTHING;
+		ON CONFLICT (name, type) DO NOTHING;
 	`
 
 	if _, err := db.Exec(seedCategories); err != nil {
