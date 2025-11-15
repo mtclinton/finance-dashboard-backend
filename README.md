@@ -32,6 +32,32 @@ Or if you've built the binary:
 
 The app will also auto-create the schema on startup if it doesn't exist, but running the migrate command separately is useful for Kubernetes init containers.
 
+### Seed demo data
+
+Populate the database with a small set of example transactions and budgets (idempotent – runs only if there are no transactions):
+
+```bash
+# Local
+go run . -seed-demo
+
+# Or if you've built the binary
+./main -seed-demo
+```
+
+Kubernetes (when the backend is running in the cluster):
+```bash
+kubectl exec -it -n finance deploy/finance-stack -c backend -- ./main -seed-demo
+```
+
+Reset demo data (optional), then reseed:
+```bash
+# Inside the backend container (Kubernetes)
+kubectl exec -it -n finance deploy/finance-stack -c backend -- sh -lc '\
+  psql "$DATABASE_URL" -c "TRUNCATE transactions, budgets RESTART IDENTITY;" && \
+  ./main -seed-demo \
+'
+```
+
 ### Start the Server
 
 Run it:
