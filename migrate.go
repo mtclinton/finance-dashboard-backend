@@ -62,65 +62,19 @@ func setupDatabase() error {
 	defer db.Close()
 
 	log.Println("Creating database schema...")
-
-	// Initialize schema
-	schema := `
-		CREATE TABLE IF NOT EXISTS categories (
-			id SERIAL PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
-			type VARCHAR(20) NOT NULL,
-			color VARCHAR(7) DEFAULT '#667eea',
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
-		
-		CREATE TABLE IF NOT EXISTS transactions (
-			id SERIAL PRIMARY KEY,
-			date DATE NOT NULL,
-			description VARCHAR(255) NOT NULL,
-			amount DECIMAL(10,2) NOT NULL,
-			category_id INTEGER REFERENCES categories(id),
-			type VARCHAR(20) NOT NULL,
-			notes TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
-		
-		CREATE TABLE IF NOT EXISTS budgets (
-			id SERIAL PRIMARY KEY,
-			category_id INTEGER REFERENCES categories(id),
-			amount DECIMAL(10,2) NOT NULL,
-			period VARCHAR(20) DEFAULT 'monthly',
-			start_date DATE NOT NULL,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
-	`
-
-	if _, err := db.Exec(schema); err != nil {
-		return fmt.Errorf("failed to create schema: %w", err)
+	if err := ensureSchema(db); err != nil {
+		return err
 	}
 
 	log.Println("Schema created successfully")
 
 	// Seed categories
 	log.Println("Seeding categories...")
-	seedCategories := `
-		INSERT INTO categories (name, type, color) VALUES
-			('Groceries', 'expense', '#e74c3c'),
-			('Rent', 'expense', '#e67e22'),
-			('Utilities', 'expense', '#f39c12'),
-			('Transportation', 'expense', '#3498db'),
-			('Entertainment', 'expense', '#9b59b6'),
-			('Salary', 'income', '#27ae60'),
-			('Freelance', 'income', '#16a085')
-		ON CONFLICT DO NOTHING;
-	`
-
-	result, err := db.Exec(seedCategories)
-	if err != nil {
+	if err := seedDefaultCategories(db); err != nil {
 		return fmt.Errorf("failed to seed categories: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
-	log.Printf("Categories seeded successfully (%d rows affected)", rowsAffected)
+	log.Printf("Categories seeded successfully")
 
 	return nil
 }
