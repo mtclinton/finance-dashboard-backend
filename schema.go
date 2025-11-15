@@ -79,4 +79,63 @@ func seedDefaultCategories(db *sql.DB) error {
 	return nil
 }
 
+// Seed a small set of demo transactions and budgets for presentations.
+// Idempotent: will only run if there are zero transactions present.
+func seedDemoData(db *sql.DB) error {
+	var cnt int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM transactions`).Scan(&cnt); err != nil {
+		return fmt.Errorf("checking transactions count: %w", err)
+	}
+	if cnt > 0 {
+		return nil
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// Insert a handful of income/expense demo transactions over the last ~30 days
+	// Categories assumed to exist from seedDefaultCategories.
+	const demoTx = `
+	INSERT INTO transactions (date, description, amount, category_id, type, notes) VALUES
+	(CURRENT_DATE - INTERVAL '28 days', 'Monthly Salary', 3200.00, (SELECT id FROM categories WHERE name='Salary' AND type='income' LIMIT 1), 'income', 'November payroll'),
+	(CURRENT_DATE - INTERVAL '25 days', 'Freelance: Landing Page', 850.00, (SELECT id FROM categories WHERE name='Freelance' AND type='income' LIMIT 1), 'income', 'Side project'),
+	(CURRENT_DATE - INTERVAL '24 days', 'Rent - Apartment', 1500.00, (SELECT id FROM categories WHERE name='Rent' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '22 days', 'Utilities - Electricity', 120.45, (SELECT id FROM categories WHERE name='Utilities' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '20 days', 'Groceries - Whole Foods', 96.72, (SELECT id FROM categories WHERE name='Groceries' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '19 days', 'Subway Pass', 45.00, (SELECT id FROM categories WHERE name='Transportation' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '16 days', 'Movie Night', 28.50, (SELECT id FROM categories WHERE name='Entertainment' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '14 days', 'Groceries - Trader Joes', 64.11, (SELECT id FROM categories WHERE name='Groceries' AND type='expense' LIMIT 1), 'expense', ''),
+    (CURRENT_DATE - INTERVAL '13 days', 'Freelance: Dashboard Charts', 600.00, (SELECT id FROM categories WHERE name='Freelance' AND type='income' LIMIT 1), 'income', ''),
+	(CURRENT_DATE - INTERVAL '11 days', 'Utilities - Internet', 60.00, (SELECT id FROM categories WHERE name='Utilities' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '8 days', 'Concert Tickets', 140.00, (SELECT id FROM categories WHERE name='Entertainment' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '6 days', 'Groceries - Costco', 132.39, (SELECT id FROM categories WHERE name='Groceries' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '4 days', 'Rideshare', 22.30, (SELECT id FROM categories WHERE name='Transportation' AND type='expense' LIMIT 1), 'expense', ''),
+	(CURRENT_DATE - INTERVAL '1 days', 'Dinner Out', 54.80, (SELECT id FROM categories WHERE name='Entertainment' AND type='expense' LIMIT 1), 'expense', '')
+	`
+	if _, err := tx.Exec(demoTx); err != nil {
+		return fmt.Errorf("seeding demo transactions: %w", err)
+	}
+
+	// Optional: a couple of demo budgets
+	const demoBudgets = `
+	INSERT INTO budgets (category_id, amount, period, start_date) VALUES
+	((SELECT id FROM categories WHERE name='Groceries' AND type='expense' LIMIT 1), 400.00, 'monthly', date_trunc('month', CURRENT_DATE)::date),
+	((SELECT id FROM categories WHERE name='Entertainment' AND type='expense' LIMIT 1), 200.00, 'monthly', date_trunc('month', CURRENT_DATE)::date),
+	((SELECT id FROM categories WHERE name='Transportation' AND type='expense' LIMIT 1), 150.00, 'monthly', date_trunc('month', CURRENT_DATE)::date)
+	`
+	if _, err := tx.Exec(demoBudgets); err != nil {
+		return fmt.Errorf("seeding demo budgets: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
 

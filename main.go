@@ -13,6 +13,7 @@ import (
 func main() {
 	// Check for migrate command
 	migrateCmd := flag.Bool("migrate", false, "Run database migration and seed data")
+	seedDemoCmd := flag.Bool("seed-demo", false, "Seed demo transactions and budgets (idempotent)")
 	flag.Parse()
 
 	if *migrateCmd {
@@ -20,6 +21,17 @@ func main() {
 			log.Fatalf("Migration failed: %v", err)
 		}
 		log.Println("Migration completed successfully")
+		os.Exit(0)
+	}
+	if *seedDemoCmd {
+		if err := initDB(); err != nil {
+			log.Fatalf("Failed to initialize database: %v", err)
+		}
+		defer db.Close()
+		if err := seedDemoData(db); err != nil {
+			log.Fatalf("Seeding demo data failed: %v", err)
+		}
+		log.Println("Demo data seeded")
 		os.Exit(0)
 	}
 	// Initialize database
